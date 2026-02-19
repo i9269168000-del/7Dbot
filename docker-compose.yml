@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: sevenhelper-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      # Use absolute path inside container for DB
+      - DATABASE_URL=sqlite:////app/data/7eleven.db
+      - API_URL=http://backend:8000
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: sevenhelper-bot
+    depends_on:
+      - backend
+    volumes:
+      # Mount data to share/access DB if needed (though bot uses API)
+      # Just in case future direct DB access is needed
+      - ./data:/app/data
+    environment:
+      # Bot communicates with backend via internal docker network hostname 'backend'
+      - API_URL=http://backend:8000
+    env_file:
+      - .env
+    restart: unless-stopped

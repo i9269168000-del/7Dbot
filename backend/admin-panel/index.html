@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SevenHelper — Вход в админку</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+</head>
+
+<body>
+    <div class="login-page">
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="digit">7</div>
+                <div class="label">DELIVERY</div>
+            </div>
+            <div class="login-title">Панель управления</div>
+            <div class="login-subtitle">SevenHelper Admin</div>
+
+            <form id="loginForm">
+                <input type="password" id="secretInput" class="login-input"
+                    placeholder="Введите секретный ключ (ADMIN_SECRET)" autocomplete="current-password" required />
+                <button type="submit" class="login-btn">Войти →</button>
+                <div class="login-error" id="loginError">Неверный ключ. Проверь ADMIN_SECRET в .env</div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Если уже вошли — сразу на dashboard
+        if (localStorage.getItem('adminSecret')) {
+            window.location.href = 'dashboard.html';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const secret = document.getElementById('secretInput').value.trim();
+            if (!secret) return;
+
+            const errorEl = document.getElementById('loginError');
+            errorEl.style.display = 'none';
+            errorEl.textContent = 'Проверка...';
+
+            try {
+                // Используем /debug/config для проверки, так как он легкий
+                // Или лучше /admin/orders?limit=1 если debug отключен
+                const resp = await fetch('/admin/orders?limit=1', {
+                    headers: { 'X-Admin-Secret': secret }
+                });
+
+                if (resp.ok) {
+                    localStorage.setItem('adminSecret', secret);
+                    window.location.href = 'dashboard.html';
+                } else {
+                    const data = await resp.json().catch(() => ({}));
+                    const msg = data.detail || `Ошибка ${resp.status}`;
+                    errorEl.textContent = `Вход не удался: ${msg}`;
+                    errorEl.style.display = 'block';
+                }
+            } catch (err) {
+                errorEl.textContent = `Ошибка сети: ${err.message}`;
+                errorEl.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+
+</html>

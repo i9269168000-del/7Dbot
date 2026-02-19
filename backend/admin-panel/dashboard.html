@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SevenHelper — Панель управления</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+</head>
+
+<body>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="digit">7</div>
+                <div class="label">DELIVERY</div>
+                <div class="sidebar-subtitle">Admin Panel</div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-tab="orders" onclick="switchTab('orders')">
+                    <span class="icon">📦</span><span>Заказы</span>
+                </div>
+                <div class="nav-item" data-tab="products" onclick="switchTab('products')">
+                    <span class="icon">🛍️</span><span>Товары</span>
+                </div>
+                <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+                    <span class="icon">⚙️</span><span>Настройки</span>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <button onclick="logout()"
+                    style="color:rgba(255,255,255,0.5);font-size:12px;background:none;border:none;cursor:pointer;">
+                    🚪 Выйти
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <div class="main">
+            <div class="topbar">
+                <div class="topbar-title" id="topbarTitle">📦 Заказы</div>
+                <div class="topbar-actions">
+                    <button class="btn btn-ghost btn-sm" onclick="refreshCurrent()">↻ Обновить</button>
+                    <button id="addProductBtn" class="btn btn-primary btn-sm" onclick="openAddProduct()"
+                        style="display:none">+ Добавить товар</button>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- Stats -->
+                <div class="stats-grid" id="statsGrid"></div>
+
+                <!-- ── Orders Tab ───────────────────────────────────── -->
+                <div class="tab-section active" id="tab-orders">
+                    <div class="filter-bar">
+                        <button class="filter-btn active" onclick="filterOrders(null, this)">Все</button>
+                        <button class="filter-btn" onclick="filterOrders('new', this)">🆕 Новые</button>
+                        <button class="filter-btn" onclick="filterOrders('paid', this)">✅ Оплачены</button>
+                        <button class="filter-btn" onclick="filterOrders('delivering', this)">🚴 В доставке</button>
+                        <button class="filter-btn" onclick="filterOrders('done', this)">🏁 Выполнены</button>
+                    </div>
+                    <div class="card">
+                        <div class="card-body" id="ordersTable">
+                            <div class="loading">Загрузка заказов...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Products Tab ────────────────────────────────── -->
+                <div class="tab-section" id="tab-products">
+                    <div class="filter-bar">
+                        <input type="text" class="search-input" placeholder="🔍 Поиск товара..."
+                            oninput="filterProductsSearch(this.value)" />
+                    </div>
+                    <div class="card">
+                        <div class="card-body" id="productsTable">
+                            <div class="loading">Загрузка товаров...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Settings Tab ────────────────────────────────── -->
+                <div class="tab-section" id="tab-settings">
+                    <div class="settings-card">
+                        <div class="settings-title">💳 Реквизиты перевода на карту РФ</div>
+                        <div class="settings-subtitle">Отображаются покупателям при выборе способа оплаты «Перевод на
+                            карту РФ»</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Банк</label>
+                                <input type="text" class="form-input" id="s_bank" placeholder="Сбербанк" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Телефон (СБП)</label>
+                                <input type="text" class="form-input" id="s_phone" placeholder="+7 900 123-45-67" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">URL QR-кода <span class="optional">(ссылка на
+                                    изображение)</span></label>
+                            <input type="url" class="form-input" id="s_qr" placeholder="https://..."
+                                oninput="previewQR(this.value)" />
+                            <img id="qrPreview" class="qr-preview" style="display:none" />
+                            <div class="form-hint">Загрузи изображение QR на любой хостинг (например imgbb.com) и вставь
+                                сюда ссылку</div>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveTransferSettings()">💾 Сохранить реквизиты</button>
+                    </div>
+
+                    <div class="settings-card">
+                        <div class="settings-title">🔑 Администрирование</div>
+                        <div class="settings-subtitle">Текущая сессия активна</div>
+                        <button class="btn btn-danger btn-sm" onclick="logout()">🚪 Выйти из панели</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Product Modal ───────────────────────────────────────────── -->
+    <div class="modal-overlay" id="productModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="productModalTitle">Добавить товар</div>
+                <button class="modal-close" onclick="closeModal('productModal')">✕</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Название (EN)</label>
+                    <input type="text" class="form-input" id="p_name" placeholder="Coffee" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Название (RU)</label>
+                    <input type="text" class="form-input" id="p_name_ru" placeholder="Кофе" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Категория</label>
+                    <select class="form-select" id="p_category">
+                        <option value="food">🍱 Еда</option>
+                        <option value="drinks">🥤 Напитки</option>
+                        <option value="snacks">🍿 Снеки</option>
+                        <option value="bakery">🍭 Сладкое</option>
+                        <option value="dairy">🥛 Молочное</option>
+                        <option value="frozen">🧊 Заморозка</option>
+                        <option value="household">🧴 Хозтовары</option>
+                        <option value="other">📦 Другое</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Цена закупки (THB)</label>
+                    <input type="number" class="form-input" id="p_price" placeholder="45" min="0" step="0.01"
+                        oninput="calcSellPrice()" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Цена продажи (THB) <span class="optional">закупка × 1.30 —
+                        авторасчёт</span></label>
+                <input type="number" class="form-input" id="p_sell_price" placeholder="58.5" min="0" step="0.01" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Фото <span class="optional">(URL изображения)</span></label>
+                <input type="url" class="form-input" id="p_image" placeholder="https://..." />
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+                <label class="toggle">
+                    <input type="checkbox" id="p_available" checked />
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="form-label" style="margin:0">В наличии</span>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('productModal')">Отмена</button>
+                <button class="btn btn-primary" onclick="saveProduct()">💾 Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Order Detail Modal ──────────────────────────────────────── -->
+    <div class="modal-overlay" id="orderModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="orderModalTitle">Заказ #</div>
+                <button class="modal-close" onclick="closeModal('orderModal')">✕</button>
+            </div>
+            <div id="orderModalBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('orderModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
