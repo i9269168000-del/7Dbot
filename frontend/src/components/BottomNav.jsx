@@ -9,7 +9,9 @@ export default function BottomNav() {
     const { t } = useLang()
 
     const items = [
-        { path: '/', icon: '🏪', label: t.all },
+        { path: '/', icon: '🏪', label: t.home || 'Home' },
+        { path: '/browse', icon: '🔍', label: t.browse || 'Browse' },
+        { path: '/orders', icon: '📦', label: t.orders || 'Orders' },
         { path: '/cart', icon: '🛒', label: t.cartTitle, badge: totalCount },
     ]
 
@@ -20,27 +22,27 @@ export default function BottomNav() {
                     key={item.path}
                     className={`bottom-nav__item ${location.pathname === item.path ? 'active' : ''}`}
                     onClick={() => navigate(item.path)}
-                    style={{ position: 'relative' }}
                 >
-                    <span style={{ fontSize: 22, position: 'relative' }}>
+                    <span className="bottom-nav__icon">
                         {item.icon}
                         {item.badge > 0 && (
                             <span
                                 style={{
                                     position: 'absolute',
-                                    top: -6,
+                                    top: -4,
                                     right: -8,
                                     background: 'var(--color-orange)',
                                     color: 'white',
-                                    fontSize: 10,
-                                    fontWeight: 700,
+                                    fontSize: 9,
+                                    fontWeight: 800,
                                     borderRadius: 10,
-                                    minWidth: 18,
-                                    height: 18,
+                                    minWidth: 16,
+                                    height: 16,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     padding: '0 4px',
+                                    boxShadow: '0 0 5px rgba(0,0,0,0.5)'
                                 }}
                             >
                                 {item.badge}

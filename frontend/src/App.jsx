@@ -5,6 +5,7 @@ import Catalog from './pages/Catalog'
 import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 import OrderStatus from './pages/OrderStatus'
+import ProductDetail from './pages/ProductDetail'
 
 export default function App() {
     return (
@@ -16,6 +17,7 @@ export default function App() {
                         <Route path="/cart" element={<Cart />} />
                         <Route path="/checkout" element={<Checkout />} />
                         <Route path="/order/:orderId" element={<OrderStatus />} />
+                        <Route path="/product/:productId" element={<ProductDetail />} />
                     </Routes>
                 </BrowserRouter>
             </CartProvider>

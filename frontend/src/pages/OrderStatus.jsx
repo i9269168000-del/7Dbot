@@ -3,21 +3,20 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { fetchOrder } from '../api'
 import { useLang } from '../context/LangContext'
 import Header from '../components/Header'
-import StripeBar from '../components/StripeBar'
 import BottomNav from '../components/BottomNav'
 
 const STATUS_STEPS = ['new', 'paid', 'delivering', 'done']
 
 const STATUS_ICONS = {
     new: '📋',
-    paid: '✅',
+    paid: '💎',
     delivering: '🚴',
     done: '🎉',
 }
 
 export default function OrderStatus() {
     const { orderId } = useParams()
-    const { t } = useLang()
+    const { t, lang } = useLang()
     const navigate = useNavigate()
 
     const [order, setOrder] = useState(null)
@@ -57,10 +56,14 @@ export default function OrderStatus() {
     }
 
     return (
-        <>
+        <div className="page" style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
             <Header />
-            <StripeBar />
-            <div className="page">
+
+            <div style={{ padding: '0 20px', paddingBottom: '120px' }}>
+                <h1 className="section-title" style={{ marginTop: '24px', fontSize: '24px', fontWeight: 800 }}>
+                    {t.orderTitle || (lang === 'en' ? 'Order Status' : 'Статус заказа')}
+                </h1>
+
                 {loading && (
                     <div className="loading"><div className="spinner" /></div>
                 )}
@@ -74,30 +77,34 @@ export default function OrderStatus() {
 
                 {order && (
                     <>
-                        <div className="status-card">
-                            <div className="status-icon">{STATUS_ICONS[order.status]}</div>
-                            <div className="status-title">
-                                {t.orderTitle} #{order.id}
+                        <div className="order-status-card">
+                            <div className="order-status-card__header">
+                                <div className="status-badge-icon">{STATUS_ICONS[order.status]}</div>
+                                <div className="order-id-tag">#{order.id}</div>
                             </div>
-                            <div className="status-subtitle">
+                            <h2 className="order-status-card__title">
+                                {stepLabels[order.status]}
+                            </h2>
+                            <p className="order-status-card__desc">
                                 {stepDescs[order.status]}
-                            </div>
+                            </p>
                         </div>
 
                         {/* Прогресс */}
-                        <div className="status-steps">
+                        <div className="stepper">
                             {STATUS_STEPS.map((step, idx) => {
                                 const isDone = idx < currentStep
                                 const isCurrent = idx === currentStep
                                 return (
                                     <div
                                         key={step}
-                                        className={`status-step ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}`}
+                                        className={`stepper__step ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}`}
                                     >
-                                        <div className="status-step__dot">
+                                        <div className="stepper__dot">
                                             {isDone ? '✓' : idx + 1}
                                         </div>
-                                        <div className="status-step__label">{stepLabels[step]}</div>
+                                        <div className="stepper__label">{stepLabels[step]}</div>
+                                        {idx < STATUS_STEPS.length - 1 && <div className="stepper__line" />}
                                     </div>
                                 )
                             })}
@@ -105,28 +112,45 @@ export default function OrderStatus() {
 
                         {/* Инструкция по чеку для новых заказов */}
                         {order.status === 'new' && (
-                            <div className="info-block" style={{ marginTop: 20 }}>
-                                <strong>{t.sendReceipt}</strong>
-                                <br />
-                                {t.receiptHint}
-                                <br />
-                                <span style={{ color: 'var(--color-orange)', fontWeight: 600 }}>
-                                    #{order.id}
-                                </span>
+                            <div className="instruction-box">
+                                <div style={{ fontSize: '24px' }}>🛡️</div>
+                                <div className="instruction-box__content">
+                                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>{t.sendReceipt}</h3>
+                                    <p style={{ margin: '4px 0 0', fontSize: '13px', opacity: 0.8 }}>
+                                        {t.receiptHint}
+                                    </p>
+                                </div>
                             </div>
                         )}
 
-                        <button
-                            className="btn btn-secondary"
-                            style={{ marginTop: 16 }}
-                            onClick={() => navigate('/')}
-                        >
-                            ← {t.backToCatalog}
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '32px' }}>
+                            <button
+                                className="buy-btn"
+                                style={{ width: '100%', height: '56px' }}
+                                onClick={() => navigate('/')}
+                            >
+                                {lang === 'en' ? 'Back to Shop' : 'В магазин'}
+                            </button>
+                            <button
+                                className="btn-secondary"
+                                style={{
+                                    width: '100%',
+                                    height: '56px',
+                                    background: 'transparent',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-primary)',
+                                    borderRadius: '12px',
+                                    fontWeight: 700
+                                }}
+                                onClick={() => window.Telegram?.WebApp?.close()}
+                            >
+                                {lang === 'en' ? 'Close App' : 'Закрыть'}
+                            </button>
+                        </div>
                     </>
                 )}
             </div>
             <BottomNav />
-        </>
+        </div>
     )
 }

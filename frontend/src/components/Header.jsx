@@ -9,32 +9,43 @@ export default function Header() {
     const location = useLocation()
 
     const isHome = location.pathname === '/'
+    
+    // Получаем данные пользователя из Telegram (если доступно)
+    const tg = window.Telegram?.WebApp
+    const user = tg?.initDataUnsafe?.user
+    const userInitial = user?.first_name ? user.first_name[0].toUpperCase() : 'U'
 
     return (
         <header className="header">
             <div className="header__left">
-                {!isHome && (
-                    <button className="back-btn" onClick={() => navigate(-1)}>
+                {!isHome ? (
+                    <button className="back-btn" onClick={() => navigate(-1)} style={{ fontSize: '20px', color: 'var(--text-black)' }}>
                         ←
                     </button>
-                )}
-                {/* Логотип в стиле 7-Eleven: цифра 7 + DELIVERY */}
-                <div className="header__logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-                    <div className="logo-seven">
-                        <span className="logo-seven__digit">7</span>
-                        <span className="logo-seven__delivery">DELIVERY</span>
+                ) : (
+                    <div className="user-avatar">
+                        {userInitial}
                     </div>
+                )}
+                
+                <div className="address-selector">
+                    <span className="address-selector__label">{lang === 'en' ? 'Deliver to' : 'Доставка'}</span>
+                    <span className="address-selector__value">
+                        Current Location <span style={{ fontSize: '10px' }}>▼</span>
+                    </span>
                 </div>
             </div>
+
+            <div className="header__logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+                <span className="logo-seven-sm">7</span>
+            </div>
+
             <div className="header__actions">
-                <button className="lang-toggle" onClick={toggleLang}>
-                    {lang === 'en' ? 'RU' : 'EN'}
+                <button className="search-btn" onClick={() => console.log('Search clicked')}>
+                    🔍
                 </button>
-                <button className="cart-btn" onClick={() => navigate('/cart')}>
-                    🛒
-                    {totalCount > 0 && (
-                        <span className="cart-btn__badge">{totalCount}</span>
-                    )}
+                <button className="lang-toggle" onClick={toggleLang} style={{ fontWeight: 700, fontSize: '12px' }}>
+                    {lang === 'en' ? 'RU' : 'EN'}
                 </button>
             </div>
         </header>

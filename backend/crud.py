@@ -35,6 +35,13 @@ def create_product(db: Session, data: schemas.ProductCreate) -> models.Product:
         sell_price_thb=sell_price,
         image_url=data.image_url,
         is_available=data.is_available,
+        # New fields
+        calories=data.calories,
+        proteins=data.proteins,
+        fats=data.fats,
+        carbs=data.carbs,
+        ingredients=data.ingredients,
+        is_hot=data.is_hot,
     )
     db.add(product)
     db.commit()
@@ -81,10 +88,33 @@ def get_or_create_user(db: Session, data: schemas.UserCreate) -> models.User:
             telegram_id=data.telegram_id,
             username=data.username,
             first_name=data.first_name,
+            display_name=data.display_name,
         )
         db.add(user)
-        db.commit()
-        db.refresh(user)
+    else:
+        # Update display_name if provided and not set
+        if data.display_name and not user.display_name:
+            user.display_name = data.display_name
+        # Update other fields just in case
+        user.username = data.username
+        user.first_name = data.first_name
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def get_user_by_telegram_id(db: Session, telegram_id: int) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.telegram_id == telegram_id).first()
+
+
+def update_user_display_name(db: Session, telegram_id: int, name: str) -> Optional[models.User]:
+    user = get_user_by_telegram_id(db, telegram_id)
+    if not user:
+        return None
+    user.display_name = name
+    db.commit()
+    db.refresh(user)
     return user
 
 
@@ -98,6 +128,7 @@ def create_order(db: Session, data: schemas.OrderCreate) -> Optional[models.Orde
             telegram_id=data.telegram_id,
             username=data.username,
             first_name=data.first_name,
+            display_name=data.display_name,
         ),
     )
 
@@ -110,12 +141,13 @@ def create_order(db: Session, data: schemas.OrderCreate) -> Optional[models.Orde
             return None  # товар не найден или недоступен
         price = product.sell_price_thb
         total += price * item.quantity
-        items_data.append((product, item.quantity, price))
+        items_data.append((product, item.quantity, price, item.options))
 
     order = models.Order(
         user_id=user.id,
         address=data.address,
         maps_url=data.maps_url,
+        contact_info=data.contact_info,
         payment_method=data.payment_method,
         status="new",
         total_thb=round(total, 2),
@@ -123,12 +155,13 @@ def create_order(db: Session, data: schemas.OrderCreate) -> Optional[models.Orde
     db.add(order)
     db.flush()  # получаем order.id до commit
 
-    for product, quantity, price in items_data:
+    for product, quantity, price, options in items_data:
         order_item = models.OrderItem(
             order_id=order.id,
             product_id=product.id,
             quantity=quantity,
             price_thb=price,
+            options=options,
         )
         db.add(order_item)
 
@@ -174,6 +207,45 @@ def set_receipt_url(
     db.commit()
     db.refresh(order)
     return order
+
+
+# ─── Reviews ──────────────────────────────────────────────────────────────────
+
+def create_review(db: Session, user_id: int, data: schemas.ReviewCreate) -> models.Review:
+    review = models.Review(
+        product_id=data.product_id,
+        user_id=user_id,
+        rating=data.rating,
+        text=data.text,
+        is_approved=False,  # Moderation required
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    return review
+
+
+def get_reviews(
+    db: Session,
+    product_id: Optional[int] = None,
+    approved_only: bool = True,
+) -> List[models.Review]:
+    q = db.query(models.Review)
+    if product_id:
+        q = q.filter(models.Review.product_id == product_id)
+    if approved_only:
+        q = q.filter(models.Review.is_approved == True)
+    return q.order_by(models.Review.created_at.desc()).all()
+
+
+def approve_review(db: Session, review_id: int, approved: bool = True) -> Optional[models.Review]:
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        return None
+    review.is_approved = approved
+    db.commit()
+    db.refresh(review)
+    return review
 
 
 # ─── App Settings ─────────────────────────────────────────────────────────────

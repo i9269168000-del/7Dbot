@@ -6,7 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from config import settings
-from handlers import admin, receipt, start
+from handlers import admin, receipt, start, support
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,6 +22,7 @@ async def main():
     dp.include_router(start.router)
     dp.include_router(receipt.router)
     dp.include_router(admin.router)
+    dp.include_router(support.router) # Поддержка последней
 
     logging.info("Бот запущен...")
     await dp.start_polling(bot)

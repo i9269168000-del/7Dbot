@@ -14,7 +14,7 @@ from config import settings
 print(f"!!! LOADED ADMIN_SECRET: '{settings.admin_secret}' (len={len(settings.admin_secret)}) !!!")
 
 from database import Base, engine, get_db
-from routers import admin, orders, products
+from routers import admin, orders, products, users
 
 
 @asynccontextmanager
@@ -38,13 +38,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(products.router)
-app.include_router(orders.router)
+app.include_router(products.router, prefix="/api")
+app.include_router(orders.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
 app.include_router(admin.router)
 
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse, FileResponse
 
 # ... (imports)
+
+# Папка для загрузки изображений (например, продуктов)
+_uploads_dir = Path(__file__).parent / "uploads"
+_uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 # Админ-панель — статические файлы
 _admin_panel_dir = Path(__file__).parent / "admin-panel"
@@ -70,11 +76,11 @@ async def serve_spa_root():
 @app.exception_handler(404)
 async def custom_404_handler(request, __):
     if request.url.path.startswith("/api") or request.url.path.startswith("/admin-panel"):
-        return {"detail": "Not Found"}
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
     
     if (_frontend_dir / "index.html").exists():
         return FileResponse(_frontend_dir / "index.html")
-    return {"detail": "Not Found"}
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
 
 @app.get("/debug/config", tags=["health"], include_in_schema=False)
@@ -87,7 +93,7 @@ def debug_config():
     }
 
 
-@app.get("/settings/transfer", response_model=schemas.TransferDetailsOut, tags=["settings"])
+@app.get("/api/settings/transfer", response_model=schemas.TransferDetailsOut, tags=["settings"])
 def get_transfer_settings_public(db: Session = Depends(get_db)):
     """Публичный endpoint — реквизиты для перевода (для отображения в Mini App)."""
     return crud.get_transfer_details(db)

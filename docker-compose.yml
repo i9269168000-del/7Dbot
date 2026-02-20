@@ -10,6 +10,7 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+      - ./backend/uploads:/app/backend/uploads
     environment:
       # Use absolute path inside container for DB
       - DATABASE_URL=sqlite:////app/data/7eleven.db

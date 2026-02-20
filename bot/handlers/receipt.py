@@ -44,15 +44,44 @@ async def handle_receipt_photo(message: Message):
     user_info = f"@{user.username}" if user.username else f"ID {user.id}"
 
     # Сохраняем file_id в бэкенде как receipt_url
+    order_details = None
     try:
         async with httpx.AsyncClient() as client:
+            # Сначала сохраняем чек
             await client.post(
-                f"{settings.api_url}/orders/{order_id}/receipt",
+                f"{settings.api_url}/api/orders/{order_id}/receipt",
                 json={"order_id": order_id, "receipt_url": file_id},
                 timeout=10,
             )
-    except Exception:
-        pass  # Не блокируем пользователя если бэкенд недоступен
+            # Затем получаем детали заказа для админа
+            resp = await client.get(f"{settings.api_url}/api/orders/{order_id}")
+            if resp.status_code == 200:
+                order_details = resp.json()
+    except Exception as e:
+        print(f"Error fetching order: {e}")
+
+    user = message.from_user
+    display_name = user.full_name
+    order_info_text = ""
+    
+    if order_details:
+        display_name = order_details["user"].get("display_name") or user.full_name
+        contact_info = order_details.get("contact_info") or "не указан"
+        
+        items_lines = []
+        for it in order_details["items"]:
+            opts = []
+            if it.get("options") and it["options"].get("heat_up"):
+                opts.append("🔥 Разогреть")
+            opt_str = f" ({', '.join(opts)})" if opts else ""
+            items_lines.append(f"• {it['product']['name_ru'] or it['product']['name']}{opt_str} x {it['quantity']}")
+        
+        items_text = "\n".join(items_lines)
+        order_info_text = (
+            f"\n📞 <b>Связь:</b> {contact_info}\n"
+            f"💰 <b>Сумма:</b> ฿{order_details['total_thb']}\n"
+            f"📦 <b>Состав:</b>\n{items_text}\n"
+        )
 
     # Пересылаем фото в чат администратора
     confirm_kb = InlineKeyboardMarkup(
@@ -74,10 +103,10 @@ async def handle_receipt_photo(message: Message):
         chat_id=settings.admin_chat_id,
         photo=file_id,
         caption=(
-            f"🧾 <b>Чек оплаты</b>\n\n"
-            f"📦 Заказ: <b>#{order_id}</b>\n"
-            f"👤 Пользователь: {user_info} ({user.first_name or ''})\n"
-            f"🆔 Telegram ID: <code>{user.id}</code>"
+            f"🧾 <b>Чек оплаты за заказ #{order_id}</b>\n"
+            f"👤 <b>{display_name}</b> (@{user.username or '—'})\n"
+            f"{order_info_text}"
+            f"\n🆔 Telegram ID: <code>{user.id}</code>"
         ),
         reply_markup=confirm_kb,
         parse_mode="HTML",

@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from sqlalchemy.orm import Session
 
 import crud
@@ -94,11 +94,20 @@ def list_orders(
     response_model=schemas.OrderOut,
     dependencies=[Depends(verify_admin)],
 )
-def confirm_payment(order_id: int, db: Session = Depends(get_db)):
+def confirm_payment(
+    order_id: int, 
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     """Подтвердить оплату — переводит заказ в статус 'paid'."""
     order = crud.update_order_status(db, order_id, "paid")
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
+    
+    # Уведомление пользователю
+    from routers.orders import send_status_notification
+    background_tasks.add_task(send_status_notification, order)
+    
     return order
 
 
@@ -110,12 +119,18 @@ def confirm_payment(order_id: int, db: Session = Depends(get_db)):
 def update_order_status(
     order_id: int,
     data: schemas.OrderStatusUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """Обновить статус заказа вручную."""
     order = crud.update_order_status(db, order_id, data.status)
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
+    
+    # Уведомление пользователю
+    from routers.orders import send_status_notification
+    background_tasks.add_task(send_status_notification, order)
+    
     return order
 
 
@@ -154,3 +169,50 @@ def update_transfer_settings(
     if data.qr_image_url is not None:
         crud.set_setting(db, "transfer_qr_url", data.qr_image_url)
     return crud.get_transfer_details(db)
+
+
+# ─── Отзывы (Модерация) ──────────────────────────────────────────────────────
+
+@router.get(
+    "/reviews",
+    response_model=List[schemas.ReviewOut],
+    dependencies=[Depends(verify_admin)],
+)
+def list_all_reviews(
+    product_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    """Список всех отзывов (для модерации)."""
+    return crud.get_reviews(db, product_id=product_id, approved_only=False)
+
+
+@router.post(
+    "/reviews/{review_id}/approve",
+    response_model=schemas.ReviewOut,
+    dependencies=[Depends(verify_admin)],
+)
+def approve_review(
+    review_id: int,
+    db: Session = Depends(get_db),
+):
+    """Одобрить отзыв."""
+    review = crud.approve_review(db, review_id, approved=True)
+    if not review:
+        raise HTTPException(status_code=404, detail="Отзыв не найден")
+    return review
+
+
+@router.post(
+    "/reviews/{review_id}/reject",
+    response_model=schemas.ReviewOut,
+    dependencies=[Depends(verify_admin)],
+)
+def reject_review(
+    review_id: int,
+    db: Session = Depends(get_db),
+):
+    """Отклонить/Скрыть отзыв."""
+    review = crud.approve_review(db, review_id, approved=False)
+    if not review:
+        raise HTTPException(status_code=404, detail="Отзыв не найден")
+    return review
