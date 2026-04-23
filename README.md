@@ -15,7 +15,7 @@ MVP приложения для доставки товаров 7-Eleven по Т
 ## Структура проекта
 
 ```
-7DBOT/
+faranga/
 ├── backend/      # FastAPI API
 ├── bot/          # aiogram 3 бот
 ├── frontend/     # React + Vite Mini App
